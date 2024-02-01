@@ -1,4 +1,5 @@
-import React, {useState} from 'react'
+import React, {useState, useEffect} from 'react'
+import axios from 'axios'
 
 // Suggested initial states
 const initialMessage = ''
@@ -17,8 +18,14 @@ export default function AppFunctional(props) {
   function getXY(index) {
     // It it not necessary to have a state to track the coordinates.
     // It's enough to know what index the "B" is at, to be able to calculate them.
-    let x = Math.ceil((index + 1) / 3);
-    let y = (index + 1) - ((x - 1) * 3);
+    let y = Math.ceil((index + 1) / 3);
+    let x = (index + 1) - ((y - 1) * 3);
+    return [x, y]
+  }
+
+  function getXYmessage(xy){
+    let x = xy[0];
+    let y = xy[1];
     return `Coordinates (${x}, ${y})`
   }
 
@@ -34,51 +41,72 @@ export default function AppFunctional(props) {
     // This helper takes a direction ("left", "up", etc) and calculates what the next index
     // of the "B" would be. If the move is impossible because we are at the edge of the grid,
     // this helper should return the current index unchanged.
-    let newIndex;
-    if (direction === 'left'){
-      newIndex = index - 1;
+    let newIndex = index;
+    
+    if (direction === 'left' && index !== 0 && index !== 3 && index !== 6){
+      newIndex -= 1;
     }
-    if (direction === 'right'){
-      newIndex = index + 1;
+    if (direction === 'right' && index !== 2 && index !== 5 && index !== 8){
+      newIndex += 1;
     }
-    if (direction === 'up'){
-      newIndex = index - 3;
+    if (direction === 'up' && index !== 0 && index !== 1 && index !== 2){
+      newIndex -= 3;
     }
-    if (direction === 'down'){
-      newIndex = index + 3;
+    if (direction === 'down' && index !== 6 && index !== 7 && index !== 8){
+      newIndex += 3;
     }
 
-    return newIndex >= 0 && newIndex <= 8 ? newIndex : index;
+    return newIndex;
     
   }
 
   function move(evt) {
     // This event handler can use the helper above to obtain a new index for the "B",
     // and change any states accordingly.
-    setIndex(getNextIndex(evt.target.id));
-    setSteps(steps + 1);
+    if (evt.target.id !== 'reset'){
+      setIndex(getNextIndex(evt.target.id));
+      setSteps(steps + 1);
+    } else reset();
   }
 
   function onChange(evt) {
     // You will need this to update the value of the input.
-    
+    setEmail(evt.value)
+    setMessage({...message, email: email})
   }
 
   function onSubmit(evt) {
     // Use a POST request to send a payload to the server.
+    evt.preventDefault();
+    
+    axios.post('http://localhost:9000/api/result', message)
+    .then(() => reset())
+    .catch(err => {
+      console.log(err)
+    })
   }
+
+  useEffect(() => {
+    let xy = getXY(index)
+    setMessage({
+      x: xy[0],
+      y: xy[1],
+      steps: steps,
+      email: email
+    });
+  }, [steps, email])
 
   return (
     <div id="wrapper" className={props.className}>
       <div className="info">
-        <h3 id="coordinates">Coordinates (2, 2)</h3>
-        <h3 id="steps">You moved 0 times</h3>
+        <h3 id="coordinates">{getXYmessage(getXY(index))}</h3>
+        <h3 id="steps">You moved {steps} times</h3>
       </div>
       <div id="grid">
         {
           [0, 1, 2, 3, 4, 5, 6, 7, 8].map(idx => (
-            <div key={idx} className={`square${idx === 4 ? ' active' : ''}`}>
-              {idx === 4 ? 'B' : null}
+            <div key={idx} className={`square${idx === index ? ' active' : ''}`}>
+              {idx === index ? 'B' : null}
             </div>
           ))
         }
@@ -86,15 +114,15 @@ export default function AppFunctional(props) {
       <div className="info">
         <h3 id="message"></h3>
       </div>
-      <div id="keypad">
+      <div id="keypad" onClick={move}>
         <button id="left">LEFT</button>
         <button id="up">UP</button>
         <button id="right">RIGHT</button>
         <button id="down">DOWN</button>
         <button id="reset">reset</button>
       </div>
-      <form>
-        <input id="email" type="email" placeholder="type email" value="email" onChange={onChange}></input>
+      <form onSubmit={onSubmit}>
+        <input id="email" type="email" placeholder="type email" value={email} onChange={onChange}></input>
         <input id="submit" type="submit"></input>
       </form>
     </div>
