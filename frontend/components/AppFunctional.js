@@ -45,16 +45,30 @@ export default function AppFunctional(props) {
     
     if (direction === 'left' && index !== 0 && index !== 3 && index !== 6){
       newIndex -= 1;
+      setSteps(steps + 1);
     }
     if (direction === 'right' && index !== 2 && index !== 5 && index !== 8){
       newIndex += 1;
+      setSteps(steps + 1);
     }
     if (direction === 'up' && index !== 0 && index !== 1 && index !== 2){
       newIndex -= 3;
+      setSteps(steps + 1);
     }
     if (direction === 'down' && index !== 6 && index !== 7 && index !== 8){
       newIndex += 3;
+      setSteps(steps + 1);
     }
+
+    if (direction === 'left' && (index === 0 || index === 3 || index === 6)){
+      setMessage("You can't go left")
+    } else if (direction === 'right' && (index === 2 || index === 5 || index === 8)){
+      setMessage("You can't go right")
+    } else if (direction === 'up' && (index === 0 || index === 1 || index === 2)){
+      setMessage("You can't go up")
+    } else if (direction === 'down' && (index === 6 || index === 7 || index === 8)){
+      setMessage("You can't go down")
+    } else setMessage("")
 
     return newIndex;
     
@@ -65,42 +79,40 @@ export default function AppFunctional(props) {
     // and change any states accordingly.
     if (evt.target.id !== 'reset'){
       setIndex(getNextIndex(evt.target.id));
-      setSteps(steps + 1);
+      
     } else reset();
   }
 
   function onChange(evt) {
     // You will need this to update the value of the input.
-    setEmail(evt.value)
-    setMessage({...message, email: email})
+    setEmail(evt.target.value)
   }
 
   function onSubmit(evt) {
     // Use a POST request to send a payload to the server.
     evt.preventDefault();
-    
-    axios.post('http://localhost:9000/api/result', message)
-    .then(() => reset())
-    .catch(err => {
-      console.log(err)
-    })
-  }
-
-  useEffect(() => {
-    let xy = getXY(index)
-    setMessage({
+    const xy = getXY(index)
+    axios.post('http://localhost:9000/api/result', {
       x: xy[0],
       y: xy[1],
       steps: steps,
       email: email
-    });
-  }, [steps, email])
+    })
+    .then(res => {
+      setMessage(res.data.message)
+      setEmail(initialEmail)
+    })
+    .catch(err => {
+      setMessage(err.response.data.message)
+    })
+  }
+
 
   return (
     <div id="wrapper" className={props.className}>
       <div className="info">
         <h3 id="coordinates">{getXYmessage(getXY(index))}</h3>
-        <h3 id="steps">You moved {steps} times</h3>
+        <h3 id="steps">{steps === 1 ? `You moved ${steps} time` : `You moved ${steps} times`}</h3>
       </div>
       <div id="grid">
         {
@@ -112,7 +124,7 @@ export default function AppFunctional(props) {
         }
       </div>
       <div className="info">
-        <h3 id="message"></h3>
+        <h3 id="message">{message}</h3>
       </div>
       <div id="keypad" onClick={move}>
         <button id="left">LEFT</button>
